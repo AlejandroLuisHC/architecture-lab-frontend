@@ -18,15 +18,24 @@ export default function ArchitectureDiagram({ configuration, compact = false }: 
   const table = activeResources(configuration, 'dynamoTable')[0];
   const policy = activeResources(configuration, 'iamPolicy')[0];
   const logGroup = activeResources(configuration, 'cloudWatchLogGroup')[0];
+  const alarm = activeResources(configuration, 'cloudWatchAlarm')[0];
+  const bucketDetail = bucket ? `${bucket.name || 'S3 bucket'} · ${bucket.blockPublicAccess ? 'private' : 'public'}` : 'Not created';
+  const distributionDetail = distribution ? `${distribution.name || 'Distribution'} · ${distribution.originAccessControl ? 'OAC' : 'no OAC'}` : 'Not created';
+  const routeDetail = route?.path || 'Not created';
+  const tableDetail = table ? `${table.name || 'Table'} · key ${table.partitionKey}` : 'Not created';
+  const roleDetail = policy ? `${policy.accessLevel} on ${table?.name || 'table'}` : 'Not configured';
+  const monitoringDetail = logGroup ? `Logs · ${alarm?.metric || 'no'} alarm` : 'No log group';
 
   return (
     <section className={`architecture-diagram ${compact ? 'architecture-diagram--compact' : ''}`} aria-label="Simulated architecture diagram">
       <div className="diagram-title-row"><div><span className="diagram-kicker">ARCHITECTURE MAP</span><h2>How the pieces connect</h2></div><span className="diagram-live">SANDBOX</span></div>
-      <div className="diagram-lane-label">FRONTEND DELIVERY</div>
-      <div className="diagram-flow"><Node label="VISITOR" title="Browser" detail="Web app" active /><span className="diagram-connector">→</span><Node label="DELIVERY" title="CloudFront" detail={distribution?.name || 'Not created'} active={Boolean(distribution?.enabled)} /><span className="diagram-connector">→</span><Node label="STORAGE" title="Amazon S3" detail={bucket?.name || 'Not created'} active={Boolean(bucket)} /></div>
-      <div className="diagram-lane-label">APPLICATION & DATA</div>
-      <div className="diagram-flow"><Node label="HTTP ENTRY" title="API Gateway" detail={route?.path || 'Not created'} active={Boolean(route)} /><span className="diagram-connector">→</span><Node label="COMPUTE" title="AWS Lambda" detail={fn?.name || 'Not created'} active={Boolean(fn)} /><span className="diagram-connector">→</span><Node label="DATABASE" title="DynamoDB" detail={table?.name || 'Not created'} active={Boolean(table)} /></div>
-      <div className="diagram-support"><Node label="ACCESS" title="AWS IAM" detail={policy?.accessLevel || 'Not configured'} active={Boolean(policy)} /><span className="diagram-connector">→</span><Node label="OBSERVABILITY" title="CloudWatch" detail={logGroup?.name || 'Not created'} active={Boolean(logGroup)} /></div>
+      <div className="diagram-lane-label">FRONTEND DELIVERY · PRIVATE ORIGIN</div>
+      <div className="diagram-flow"><Node label="VISITOR" title="Browser" detail="Web app" active /><span className="diagram-connector">→</span><Node label="DELIVERY" title="CloudFront" detail={distributionDetail} active={Boolean(distribution?.enabled)} /><span className="diagram-connector">→</span><Node label="STORAGE" title="Amazon S3" detail={bucketDetail} active={Boolean(bucket?.blockPublicAccess)} /></div>
+      <div className="diagram-lane-label">API REQUEST & DATA</div>
+      <div className="diagram-flow"><Node label="HTTP ENTRY" title="API Gateway" detail={routeDetail} active={Boolean(route)} /><span className="diagram-connector">→</span><Node label="COMPUTE" title="AWS Lambda" detail={fn?.name || 'Not created'} active={Boolean(fn)} /><span className="diagram-connector">→</span><Node label="DATABASE" title="DynamoDB" detail={tableDetail} active={Boolean(table)} /></div>
+      <div className="diagram-lane-label">LAMBDA ROLE & OPERATIONS</div>
+      <div className="diagram-support"><Node label="EXECUTION ROLE" title="AWS IAM" detail={roleDetail} active={Boolean(policy)} /><Node label="LOGS & ALARM" title="CloudWatch" detail={monitoringDetail} active={Boolean(logGroup && alarm)} /></div>
+      <p className="diagram-role-note">Starter pattern, not production-hardened: grant API Gateway permission to invoke Lambda; add API authorization and throttling before exposing real data. Scope Lambda's role to this table and CloudWatch Logs; allow only the site origin in CORS if origins differ.</p>
       <p className="diagram-caption">A conceptual view of your sandbox. No AWS resources are created.</p>
     </section>
   );

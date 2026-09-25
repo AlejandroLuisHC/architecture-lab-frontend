@@ -1,15 +1,28 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { onAuthStateChanged, signOut, type User } from 'firebase/auth';
 import { ApiError, getLab, getProgress, saveProgress, validateConfiguration } from './api';
 import { auth } from './firebase';
 import ArchitectureDiagram from './components/ArchitectureDiagram';
 import AuthDialog from './components/AuthDialog';
 import ConsoleStep from './components/ConsoleStep';
+import LandingArchitecture from './components/LandingArchitecture';
 import type { Evaluation, Lab, LabConfiguration, LabService, Progress } from './types';
 
 type Screen = 'home' | 'modules' | 'lab' | 'complete';
+type Theme = 'light' | 'dark';
 type SaveStatus = 'guest' | 'loading' | 'saving' | 'saved' | 'error';
 type Conflict = Progress | 'stale' | null;
+const THEME_STORAGE_KEY = 'stack-playground.theme.v1';
+
+function getInitialTheme(): Theme {
+  try {
+    const saved = window.localStorage.getItem(THEME_STORAGE_KEY);
+    if (saved === 'light' || saved === 'dark') return saved;
+  } catch {
+    // Storage can be unavailable in private or restricted browsing contexts.
+  }
+  return typeof window.matchMedia === 'function' && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
 
 function copyConfiguration(configuration: LabConfiguration): LabConfiguration {
   return structuredClone(configuration);
@@ -27,6 +40,20 @@ function serviceTone(serviceId: string) {
   if (['iam', 'cognito'].includes(serviceId)) return 'security';
   if (['cloudwatch', 'cloudtrail'].includes(serviceId)) return 'management';
   return 'integration';
+}
+
+function ThemeToggle({ theme, onToggle }: { theme: Theme; onToggle: () => void }) {
+  const nextTheme = theme === 'dark' ? 'light' : 'dark';
+  return (
+    <button className="theme-toggle" type="button" onClick={onToggle} aria-label={`Switch to ${nextTheme} mode`} aria-pressed={theme === 'dark'} title={`Switch to ${nextTheme} mode`}>
+      {theme === 'dark' ? (
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42" /></svg>
+      ) : (
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.7 15.1A8.5 8.5 0 0 1 8.9 3.3 8.6 8.6 0 1 0 20.7 15.1Z" /></svg>
+      )}
+      <span>{nextTheme === 'dark' ? 'Dark' : 'Light'}</span>
+    </button>
+  );
 }
 
 function LandingConsolePreview() {
@@ -55,14 +82,14 @@ function Landing({ lab, onStart, cta }: { lab: Lab; onStart: () => void; cta: st
             <div className="landing-actions"><button className="button button--primary button--large" type="button" onClick={onStart}>{cta}<span aria-hidden="true">→</span></button><a className="hero-secondary" href="#learning-path">Explore the learning path <span aria-hidden="true">↓</span></a></div>
             <div className="landing-facts"><div><strong>01</strong><span>beginner lab</span></div><div><strong>04</strong><span>guided stages</span></div><div><strong>0</strong><span>AWS resources created</span></div></div>
           </div>
-          <div className="landing-preview-wrap"><div className="preview-note"><span>THE WORKSPACE</span><span>SIMULATED · SAFE TO EXPLORE</span></div><LandingConsolePreview /></div>
+          <LandingArchitecture />
         </div>
         <div className="hero-bottomline"><span>FIRST LAB</span><b>Build a serverless web app</b><span className="hero-bottomline__sep">·</span><span>Amazon S3</span><span>CloudFront</span><span>API Gateway</span><span>Lambda</span><span>DynamoDB</span><span>CloudWatch</span></div>
       </section>
 
       <section className="landing-intro"><div className="page-container intro-layout"><div><span className="eyebrow">A PLACE TO PRACTISE, NOT JUST READ</span><h2>Understand the shape<br />of a cloud application.</h2></div><div><p>{lab.description}</p><p>Work in a focused console with the services you need for the current lesson. A guide gives you context, then you make the choices and check your own configuration.</p><div className="intro-meta"><span>{lab.duration}</span><span>{lab.level}</span><span>Guest access</span><span>No AWS account</span></div></div></div></section>
 
-      <section className="practice-method"><div className="page-container practice-method__inner"><div className="practice-method__heading"><span className="eyebrow">HOW THE LAB WORKS</span><h2>Learn by making the connections.</h2><p>Each step adds one piece to the same application. The sandbox checks the choices that matter and explains what to revisit.</p></div><div className="method-steps"><article><span>01 / CONFIGURE</span><h3>Work in the console</h3><p>Create and edit simulated cloud resources. The layout borrows familiar console patterns while staying focused on this lesson.</p></article><article><span>02 / CHECK</span><h3>Get useful feedback</h3><p>Run a configuration check whenever you are ready. You can see what passed, what needs attention, and why.</p></article><article><span>03 / CONNECT</span><h3>See the full picture</h3><p>Finish with a map of the architecture you assembled and a concise explanation of each service’s role.</p></article></div></div></section>
+      <section className="practice-method"><div className="page-container practice-method__inner"><div className="practice-method__heading"><span className="eyebrow">HOW THE LAB WORKS</span><h2>Learn by making the connections.</h2><p>Each step adds one piece to the same application. The sandbox checks the choices that matter and explains what to revisit.</p></div><div className="method-steps"><article><span>01 / CONFIGURE</span><h3>Work in the console</h3><p>Create and edit simulated cloud resources. The layout borrows familiar console patterns while staying focused on this lesson.</p></article><article><span>02 / CHECK</span><h3>Get useful feedback</h3><p>Run a configuration check whenever you are ready. You can see what passed, what needs attention, and why.</p></article><article><span>03 / CONNECT</span><h3>See the full picture</h3><p>Finish with a map of the architecture you assembled and a concise explanation of each service’s role.</p></article></div><div className="practice-method__preview"><div className="practice-method__preview-copy"><span className="eyebrow">INSIDE THE SANDBOX</span><h3>A familiar workspace, without the risk.</h3><p>Practise in a focused console with a step-by-step guide. Every change stays simulated in your browser.</p></div><div><div className="preview-note"><span>THE WORKSPACE</span><span>SIMULATED · SAFE TO EXPLORE</span></div><LandingConsolePreview /></div></div></div></section>
 
       <section className="landing-path page-container" id="learning-path"><div className="section-heading"><div><span className="eyebrow">THE FIRST LEARNING PATH</span><h2>Build in four stages.</h2></div><p>Each stage introduces a connection. Earlier services stay available as your architecture grows.</p></div><div className="path-list">{lab.steps.map((step) => <article className="path-row" key={step.id}><span className="path-number">{step.number}</span><div><h3>{step.title}</h3><p>{step.goal}</p></div><div className="path-services">{step.services.map((service) => <span key={service}>{service}</span>)}</div></article>)}</div><div className="landing-bottom-cta"><div><strong>Ready to open the sandbox?</strong><p>Start as a guest. Your work stays in this browser until you choose to save it.</p></div><button className="button button--primary" type="button" onClick={onStart}>{cta}<span aria-hidden="true">→</span></button></div><p className="landing-disclaimer">Stack Playground is an independent learning project. AWS service names are used for educational reference; no AWS resources are created.</p></section>
     </main>
@@ -90,6 +117,7 @@ function serviceStage(service: LabService) {
 }
 
 export default function App() {
+  const [theme, setTheme] = useState<Theme>(getInitialTheme);
   const [lab, setLab] = useState<Lab | null>(null);
   const [configuration, setConfiguration] = useState<LabConfiguration | null>(null);
   const [screen, setScreen] = useState<Screen>('home');
@@ -117,6 +145,16 @@ export default function App() {
   const previousUserRef = useRef(false);
   const saveQueueRef = useRef<Promise<unknown>>(Promise.resolve());
   const saveSequenceRef = useRef(0);
+
+  useLayoutEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#0b1220' : '#f5f7fa');
+    try {
+      window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+    } catch {
+      // The selected theme still applies for this session if storage is unavailable.
+    }
+  }, [theme]);
 
   useEffect(() => { draftRef.current = { configuration, currentStep, unlockedThroughStep, guestTouched }; }, [configuration, currentStep, unlockedThroughStep, guestTouched]);
 
@@ -253,8 +291,8 @@ export default function App() {
   const checkButton = <button className="button button--primary button--wide" type="button" onClick={() => { void checkStep(); setMobileGuideOpen(false); }} disabled={checking}>{checking ? 'Checking configuration…' : 'Check configuration'} <span aria-hidden="true">→</span></button>;
 
   return (
-    <div className="app-shell">
-      <header className={`site-header ${screen === 'lab' ? 'site-header--console' : ''}`}><div className="page-container site-header__inner"><button className="brand" type="button" onClick={() => setScreen('home')}><LabMark /><span>Stack Playground<small>CLOUD LEARNING SANDBOX</small></span></button>{screen !== 'lab' ? <nav aria-label="Main navigation"><button className={screen === 'home' ? 'is-active' : ''} type="button" onClick={() => setScreen('home')}>Overview</button><button className={screen === 'modules' ? 'is-active' : ''} type="button" onClick={() => setScreen('modules')}>Modules</button></nav> : <div className="console-header-context"><span>LEARNING SANDBOX</span><span className="console-header-divider">/</span><strong>Build a serverless web app</strong></div>}{screen === 'lab' ? <div className="console-header-controls"><label className="console-search"><span aria-hidden="true">⌕</span><input aria-label="Search services" value={serviceSearch} onChange={(event) => setServiceSearch(event.target.value)} placeholder="Search services" /></label><span className="console-region"><small>Region</small><b>us-east-1</b><span aria-hidden="true">⌄</span></span></div> : null}<div className="header-actions">{screen === 'lab' ? <button className="guide-toggle" type="button" aria-expanded={mobileGuideOpen} onClick={() => setMobileGuideOpen(true)}>Guide <span aria-hidden="true">☰</span></button> : null}{user ? <><span className="header-email" title={user.email ?? undefined}>{user.email}</span><button className="header-account" type="button" onClick={() => { if (auth) void signOut(auth); }}>Sign out</button></> : <button className="header-account" type="button" onClick={() => setAuthOpen(true)}>Sign in</button>}</div></div></header>
+    <div className="app-shell" data-theme={theme}>
+      <header className={`site-header ${screen === 'lab' ? 'site-header--console' : ''}`}><div className="page-container site-header__inner"><button className="brand" type="button" onClick={() => setScreen('home')}><LabMark /><span>Stack Playground<small>CLOUD LEARNING SANDBOX</small></span></button>{screen !== 'lab' ? <nav aria-label="Main navigation"><button className={screen === 'home' ? 'is-active' : ''} type="button" onClick={() => setScreen('home')}>Overview</button><button className={screen === 'modules' ? 'is-active' : ''} type="button" onClick={() => setScreen('modules')}>Modules</button></nav> : <div className="console-header-context"><span>LEARNING SANDBOX</span><span className="console-header-divider">/</span><strong>Build a serverless web app</strong></div>}{screen === 'lab' ? <div className="console-header-controls"><label className="console-search"><span aria-hidden="true">⌕</span><input aria-label="Search services" value={serviceSearch} onChange={(event) => setServiceSearch(event.target.value)} placeholder="Search services" /></label><span className="console-region"><small>Region</small><b>us-east-1</b><span aria-hidden="true">⌄</span></span></div> : null}<div className="header-actions">{screen === 'lab' ? <button className="guide-toggle" type="button" aria-expanded={mobileGuideOpen} onClick={() => setMobileGuideOpen(true)}>Guide <span aria-hidden="true">☰</span></button> : null}<ThemeToggle theme={theme} onToggle={() => setTheme((current) => current === 'light' ? 'dark' : 'light')} />{user ? <><span className="header-email" title={user.email ?? undefined}>{user.email}</span><button className="header-account" type="button" onClick={() => { if (auth) void signOut(auth); }}>Sign out</button></> : <button className="header-account" type="button" onClick={() => setAuthOpen(true)}>Sign in</button>}</div></div></header>
 
       {screen === 'home' ? <Landing lab={lab} cta={cta} onStart={() => setScreen('modules')} /> : null}
       {screen === 'modules' ? <ModuleSelector lab={lab} onStart={() => { setScreen(completedAt ? 'complete' : 'lab'); if (!completedAt) setGuestTouched(true); }} /> : null}
