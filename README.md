@@ -1,4 +1,4 @@
-# Architecture Lab
+# Stack Playground
 
 A guided, English-language AWS architecture simulation for beginners. Visitors can finish the entire serverless web app lab without an account. Signing in adds saved progress and the ability to resume on another device. The simulation never deploys AWS resources or estimates costs.
 
@@ -18,10 +18,10 @@ To enable accounts, create a Firebase project, enable **Authentication → Email
 
 ## Experience
 
-1. The overview explains the four-stage lesson and launches the lab.
-2. A simplified console lets learners configure S3 and CloudFront, API Gateway and Lambda, DynamoDB and IAM, and CloudWatch.
-3. **Check this stage** asks the backend for actionable feedback. A correct stage leads to the next guided action; all stages must pass for completion.
-4. The final screen displays the configured architecture and key lessons.
+1. The overview introduces the practice sandbox. The module picker lists the active beginner lab and clearly marked future modules.
+2. The sandbox provides service navigation, resource lists, create/detail/edit/delete flows, and a guide on the right. Services unlock as the learner completes each stage; earlier services stay available.
+3. Resource relationships and settings are simulated in browser state. **Check configuration** asks the backend for stage feedback and unlocks the next stage only when the configuration is valid.
+4. The final screen displays the assembled architecture and key lessons. The simulator uses service names as factual text references and is not affiliated with AWS.
 5. Guests keep state only in the open page. When they register, their current run is saved. If an existing account already has progress, they choose which run to continue.
 
 ## Quality check

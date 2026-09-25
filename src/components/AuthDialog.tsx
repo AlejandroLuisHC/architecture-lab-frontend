@@ -78,7 +78,7 @@ export default function AuthDialog({ onClose }: Props) {
       <div className="dialog-card" role="dialog" aria-modal="true" aria-labelledby="auth-title">
         <button className="dialog-close" type="button" onClick={onClose} aria-label="Close dialog">×</button>
         <div className="dialog-symbol" aria-hidden="true">✦</div>
-        <span className="eyebrow">YOUR ARCHITECTURE LAB</span>
+        <span className="eyebrow">STACK PLAYGROUND</span>
         <h2 id="auth-title">{mode === 'sign-up' ? 'Keep your progress' : 'Welcome back'}</h2>
         <p className="dialog-intro">{mode === 'sign-up' ? 'Create an account to save this run and continue it on another device.' : 'Sign in to pick up where you left off.'}</p>
 
