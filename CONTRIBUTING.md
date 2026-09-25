@@ -17,6 +17,7 @@ Frontend tests run in jsdom and mock Firebase and the backend. They do not need 
 - Promote `dev` to `integration`, then `integration` to `main`, using PRs and merge commits.
 - PRs into `integration` from any branch other than `dev`, or into `main` from any branch other than `integration`, fail the branch-flow check.
 - `integration` and `main` reject direct updates. Do not force-push or delete protected branches.
+- The owner-only **Promote both repositories** workflow lives in `architecture-lab-backend` and promotes both projects together.
 
 GitHub Actions validates the code only. It does not deploy or publish the frontend.
 
