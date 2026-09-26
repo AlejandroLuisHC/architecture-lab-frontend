@@ -1,55 +1,59 @@
 name: Frontend CI
 
 on:
-  push:
-    branches: [dev, integration, main]
-  pull_request:
-    branches: [dev, integration, main]
+    push:
+        branches: [dev, integration, main]
+    pull_request:
+        branches: [dev, integration, main]
 
 permissions:
-  contents: read
+    contents: read
 
 concurrency:
-  group: frontend-ci-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+    group: frontend-ci-${{ github.event.pull_request.number || github.ref }}
+    cancel-in-progress: true
 
 jobs:
-  branch-flow:
-    name: Frontend CI / branch-flow
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Enforce promotion source branch
-        env:
-          BASE_BRANCH: ${{ github.base_ref }}
-          HEAD_BRANCH: ${{ github.head_ref }}
-        run: |
-          case "$BASE_BRANCH" in
-            integration)
-              [[ "$HEAD_BRANCH" == "dev" ]] || { echo "integration accepts PRs only from dev"; exit 1; }
-              ;;
-            main)
-              [[ "$HEAD_BRANCH" == "integration" ]] || { echo "main accepts PRs only from integration"; exit 1; }
-              ;;
-            dev)
-              case "$HEAD_BRANCH" in
-                dev|integration|main) echo "Use a topic branch for PRs into dev"; exit 1 ;;
-              esac
-              ;;
-          esac
+    branch-flow:
+        name: Frontend CI / branch-flow
+        if: github.event_name == 'pull_request'
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        steps:
+            - name: Enforce promotion source branch
+              env:
+                  BASE_BRANCH: ${{ github.base_ref }}
+                  HEAD_BRANCH: ${{ github.head_ref }}
+              run: |
+                  case "$BASE_BRANCH" in
+                    integration)
+                      [[ "$HEAD_BRANCH" == "dev" ]] || { echo "integration accepts PRs only from dev"; exit 1; }
+                      ;;
+                    main)
+                      [[ "$HEAD_BRANCH" == "integration" ]] || { echo "main accepts PRs only from integration"; exit 1; }
+                      ;;
+                    dev)
+                      case "$HEAD_BRANCH" in
+                        dev|integration|main) echo "Use a topic branch for PRs into dev"; exit 1 ;;
+                      esac
+                      ;;
+                  esac
 
-  verify:
-    name: Frontend CI / verify
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - run: npm ci
-      - name: Run unit and component tests
-        run: npm test
-      - name: Build frontend
-        run: npm run build
+    verify:
+        name: Frontend CI / verify
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+            - run: npm ci
+            - name: Check formatting
+              run: npm run format:check
+            - name: Lint frontend
+              run: npm run lint
+            - name: Run unit and component tests
+              run: npm test
+            - name: Build frontend
+              run: npm run build
