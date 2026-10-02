@@ -11,7 +11,8 @@
 .sandbox-home__intro h1 {
     margin: 14px 0;
     font-size: clamp(38px, 5vw, 58px);
-    letter-spacing: -0.055em;
+    letter-spacing: -0.025em;
+    line-height: 1;
 }
 
 .sandbox-home__intro p {
@@ -406,7 +407,7 @@
     color: var(--service-tone);
     font-size: 10px;
     font-weight: 850;
-    letter-spacing: -0.04em;
+    letter-spacing: -0.03em;
 }
 
 .service-icon--compute {
@@ -651,7 +652,7 @@
     margin: 5px 0 5px;
     color: #1f2e41;
     font-size: clamp(22px, 3vw, 30px);
-    letter-spacing: -0.045em;
+    letter-spacing: -0.015em;
 }
 
 .service-page__header p,
@@ -1426,7 +1427,17 @@
 
 @media (max-width: 760px) {
     .sandbox-home {
-        padding-top: 38px;
+        padding: 38px 0 56px;
+    }
+
+    .sandbox-home__intro {
+        margin-bottom: 36px;
+    }
+
+    .sandbox-home__intro h1 {
+        font-size: clamp(34px, 9vw, 46px);
+        letter-spacing: 0;
+        line-height: 1.1;
     }
 
     .sandbox-home__actions,
@@ -1439,7 +1450,7 @@
     .sandbox-console__topbar {
         flex-wrap: wrap;
         gap: 8px 12px;
-        padding: 9px 12px;
+        padding: 10px 16px;
     }
 
     .sandbox-console__breadcrumb {
@@ -1457,7 +1468,7 @@
 
     .sandbox-console__subnav {
         overflow-x: auto;
-        padding: 0 7px;
+        padding: 0 12px;
     }
 
     .sandbox-console__subnav button {
@@ -1514,14 +1525,14 @@
     }
 
     .sandbox-console__content {
-        padding: 14px 10px;
+        padding: 16px;
     }
 
     .sandbox-inspector {
         grid-column: auto;
         border-top: 1px solid #d8e0e7;
         border-left: 0;
-        padding: 14px 12px;
+        padding: 16px;
     }
 
     .service-page__header {
@@ -1530,7 +1541,7 @@
     }
 
     .service-create {
-        margin-left: 56px;
+        margin-left: 0;
     }
 
     .service-page__toolbar {
@@ -1608,4 +1619,323 @@
         align-items: flex-start;
         flex-direction: column;
     }
+}
+
+/* Freeform console: the workspace mirrors the guided console, with insights in its right rail. */
+.sandbox-console__body.is-template {
+    display: block;
+}
+
+.sandbox-resource-editor {
+    margin-top: 20px;
+    border: 1px solid #d8e0e7;
+    border-radius: 6px;
+    overflow: hidden;
+    background: #fff;
+}
+
+.sandbox-resource-editor .sandbox-inspector {
+    border: 0;
+    padding: 20px;
+}
+
+.sandbox-insights {
+    min-width: 0;
+    border-left: 1px solid #d8e0e7;
+    background: #f9fbfc;
+    padding: 18px 16px;
+}
+
+.sandbox-insights__summary h2 {
+    margin: 6px 0 14px;
+    color: #25364a;
+    font-size: 19px;
+}
+
+.sandbox-insights__counts {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+}
+
+.sandbox-insights__counts span {
+    min-width: 0;
+    border: 1px solid #dce3e8;
+    border-radius: 4px;
+    background: #fff;
+    padding: 8px 5px;
+    color: #5f7185;
+    font-size: 9px;
+    text-align: center;
+}
+
+.sandbox-insights__counts strong {
+    display: block;
+    color: #263f5b;
+    font-size: 17px;
+}
+
+.sandbox-insights .sandbox-analysis {
+    border: 0;
+    background: transparent;
+    padding: 22px 0 0;
+}
+
+.sandbox-insights .sandbox-analysis__header,
+.sandbox-insights .analysis-actions {
+    align-items: stretch;
+    flex-direction: column;
+}
+
+.sandbox-insights .analysis-actions {
+    justify-content: stretch;
+    width: 100%;
+    margin-top: 12px;
+}
+
+.sandbox-insights .analysis-results {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.sandbox-insights .analysis-findings {
+    grid-column: auto;
+}
+
+.sandbox-insights .analysis-card,
+.sandbox-insights .analysis-finding {
+    min-height: 0;
+}
+
+.sandbox-insights .analysis-card p,
+.sandbox-insights .analysis-card li,
+.sandbox-insights .analysis-card small,
+.sandbox-insights .analysis-finding p,
+.sandbox-insights .analysis-finding strong,
+.sandbox-insights .sandbox-analysis__header p {
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+.sandbox-lifecycle {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    border-top: 1px solid #e0e5eb;
+    padding: 16px 20px;
+}
+
+.sandbox-lifecycle strong {
+    display: block;
+    margin-top: 5px;
+    color: #263f5b;
+    text-transform: capitalize;
+}
+
+.sandbox-lifecycle small,
+.sandbox-lifecycle-note {
+    width: 100%;
+    margin: 0;
+    color: #6d7f91;
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+.sandbox-lifecycle-note {
+    border-top: 1px solid #e0e5eb;
+    padding: 12px 20px;
+}
+
+.architecture-diagram {
+    overflow: hidden;
+    border: 1px solid #d8e0e7;
+    border-radius: 6px;
+    background: #f5f8fb;
+}
+
+.architecture-diagram__toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid #d8e0e7;
+    background: #fff;
+    padding: 8px 12px;
+    color: #586b80;
+    font-size: 11px;
+}
+
+.architecture-diagram__toolbar button {
+    border: 1px solid #d8e0e7;
+    border-radius: 4px;
+    background: #fff;
+    padding: 5px 9px;
+    color: #263f5b;
+    cursor: pointer;
+}
+
+.architecture-diagram__viewport {
+    overflow: auto;
+    height: min(560px, 62vh);
+    min-height: 340px;
+    cursor: grab;
+    touch-action: pan-x pan-y;
+}
+
+.architecture-diagram__viewport:active {
+    cursor: grabbing;
+}
+
+.architecture-diagram__plane {
+    position: relative;
+    transform-origin: top left;
+    background-image: radial-gradient(#d9e3eb 1px, transparent 1px);
+    background-size: 18px 18px;
+}
+
+.architecture-diagram__edges {
+    position: absolute;
+    inset: 0;
+    overflow: visible;
+    pointer-events: none;
+}
+
+.architecture-diagram__edges path {
+    fill: none;
+    stroke: #a4b8c9;
+    stroke-width: 2;
+}
+
+.architecture-diagram__edges marker path {
+    fill: #a4b8c9;
+    stroke: none;
+}
+
+.architecture-diagram__edges g.is-highlighted path {
+    stroke: #e69228;
+    stroke-width: 3;
+}
+
+.architecture-diagram__edges text {
+    fill: #53677d;
+    font-size: 10px;
+    paint-order: stroke;
+    stroke: #f5f8fb;
+    stroke-width: 5px;
+}
+
+.architecture-diagram__node {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    width: 190px;
+    height: 82px;
+    border: 1px solid #ccd8e3;
+    border-radius: 6px;
+    background: #fff;
+    padding: 10px;
+    box-shadow: 0 2px 8px #16304c14;
+    text-align: left;
+    cursor: pointer;
+}
+
+.architecture-diagram__node.is-selected,
+.architecture-diagram__node.is-connected {
+    border-color: #e69228;
+    box-shadow: 0 0 0 2px #e6922833;
+}
+
+.architecture-diagram__node-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    gap: 3px;
+}
+
+.architecture-diagram__node-text small,
+.architecture-diagram__node-text em {
+    color: #677b90;
+    font-size: 10px;
+    font-style: normal;
+}
+
+.architecture-diagram__node-text strong {
+    overflow: hidden;
+    color: #263f5b;
+    font-size: 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.architecture-diagram__hint {
+    margin: 0;
+    border-top: 1px solid #d8e0e7;
+    padding: 8px 12px;
+    color: #6d7f91;
+    font-size: 10px;
+}
+
+@media (max-width: 1180px) {
+    .sandbox-insights {
+        grid-column: 2;
+        border-top: 1px solid #d8e0e7;
+        border-left: 0;
+    }
+}
+
+@media (max-width: 760px) {
+    .sandbox-insights {
+        grid-column: auto;
+        padding: 18px 16px;
+    }
+}
+
+:root[data-theme='dark'] .sandbox-resource-editor,
+:root[data-theme='dark'] .sandbox-resource-editor .sandbox-inspector,
+:root[data-theme='dark'] .sandbox-insights,
+:root[data-theme='dark'] .architecture-diagram,
+:root[data-theme='dark'] .architecture-diagram__toolbar,
+:root[data-theme='dark'] .architecture-diagram__node,
+:root[data-theme='dark'] .sandbox-insights__counts span {
+    border-color: #34475e;
+    background: #202d3e;
+}
+
+:root[data-theme='dark'] .architecture-diagram__plane {
+    background-image: radial-gradient(#384a61 1px, transparent 1px);
+}
+
+:root[data-theme='dark'] .architecture-diagram__node-text strong,
+:root[data-theme='dark'] .sandbox-insights__summary h2,
+:root[data-theme='dark'] .sandbox-insights__counts strong,
+:root[data-theme='dark'] .sandbox-lifecycle strong {
+    color: #e0e8f1;
+}
+
+.resource-table {
+    min-width: 620px;
+}
+
+.resource-table th,
+.resource-table__name,
+.resource-status,
+.resource-property,
+.resource-readonly span,
+.resource-readonly code,
+.relationship-chip,
+.service-reference p {
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+.resource-table code,
+.resource-title small {
+    font-size: 10px;
+}
+
+.resource-property input,
+.resource-property select,
+.resource-property textarea {
+    font-size: 12px;
 }

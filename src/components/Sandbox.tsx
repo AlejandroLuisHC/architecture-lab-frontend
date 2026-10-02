@@ -25,6 +25,14 @@ import {
     type TemplateDiagnostic,
 } from '../features/sandbox/cloudformation';
 import ResourceInspector from '../features/sandbox/ResourceInspector';
+import {
+    activeStateCount,
+    initialState,
+    lifecycleOptions,
+    resourceState,
+    type SimulatedResourceState,
+    type SimulatedResourceStates,
+} from '../features/sandbox/lifecycle';
 import { CatalogNavigation } from '../features/sandbox/ServicePage';
 import ServicePage from '../features/sandbox/ServicePage';
 import TemplateEditor from '../features/sandbox/TemplateEditor';
@@ -48,15 +56,6 @@ const regionChoices = [
     'ap-southeast-1',
     'ap-southeast-2',
 ];
-const derivedKinds = new Set([
-    'uses-origin',
-    'invokes',
-    'grants-to',
-    'permits-on',
-    'captures-logs',
-    'monitors',
-]);
-
 type Relationship = { sourceId: string; targetId: string; kind: string };
 type Draft = {
     localId: string;
@@ -64,6 +63,7 @@ type Draft = {
     region: string;
     configuration: LabConfiguration;
     relationships: Relationship[];
+    simulatedResourceStates: SimulatedResourceStates;
     workloadAssumptions: WorkloadAssumptions;
     updatedAt: string;
     scenarioId?: string;
@@ -84,15 +84,17 @@ function readDrafts(): Draft[] {
     try {
         const saved: unknown = JSON.parse(window.localStorage.getItem(DRAFTS_KEY) ?? '[]');
         if (!Array.isArray(saved)) return [];
-        return saved.filter((value): value is Draft =>
-            Boolean(
-                value &&
-                typeof value === 'object' &&
-                'configuration' in value &&
-                'title' in value &&
-                Array.isArray((value as Draft).configuration.resources),
-            ),
-        );
+        return saved
+            .filter((value): value is Draft =>
+                Boolean(
+                    value &&
+                    typeof value === 'object' &&
+                    'configuration' in value &&
+                    'title' in value &&
+                    Array.isArray((value as Draft).configuration.resources),
+                ),
+            )
+            .map((draft) => ({ ...draft, simulatedResourceStates: draft.simulatedResourceStates ?? {} }));
     } catch {
         return [];
     }
@@ -109,12 +111,20 @@ function normalizedWorkload(value: unknown): WorkloadAssumptions {
 }
 
 function toScenarioInput(draft: Draft): ScenarioInput {
+    const inferred = new Set(
+        derivedRelationships(draft.configuration).map(
+            (link) => `${link.sourceId}|${link.targetId}|${link.kind}`,
+        ),
+    );
     return {
         title: draft.title,
         region: draft.region,
         workloadAssumptions: draft.workloadAssumptions,
         configuration: draft.configuration,
-        relationships: draft.relationships,
+        simulatedResourceStates: draft.simulatedResourceStates,
+        relationships: draft.relationships.filter(
+            (link) => !inferred.has(`${link.sourceId}|${link.targetId}|${link.kind}`),
+        ),
         ...(draft.cloudFormationSource ? { cloudFormationSource: draft.cloudFormationSource } : {}),
     };
 }
@@ -136,7 +146,23 @@ function derivedRelationships(configuration: LabConfiguration): Relationship[] {
             add(resource.id, resource.lambdaId, 'captures-logs');
         else if (resource.type === 'cloudWatchAlarm') add(resource.id, resource.lambdaId, 'monitors');
     }
-    return relationships;
+    return [...relationships, ...derivedAwsRelationships(configuration, resourceIds)];
+}
+
+function derivedAwsRelationships(configuration: LabConfiguration, ids: Set<string>): Relationship[] {
+    return configuration.resources.flatMap((resource) => {
+        if (resource.type !== 'awsResource') return [];
+        return Object.entries(resource.settings).flatMap(([key, value]) => {
+            if (!key.endsWith('Id') || typeof value !== 'string' || !ids.has(value)) return [];
+            return [
+                {
+                    sourceId: resource.id,
+                    targetId: value,
+                    kind: key.toLowerCase().includes('vpc') ? 'attached-to' : 'connects-to',
+                },
+            ];
+        });
+    });
 }
 
 function combineRelationships(configuration: LabConfiguration, custom: Relationship[]): Relationship[] {
@@ -159,6 +185,7 @@ function createDraft(title = 'Untitled architecture'): Draft {
         region: 'us-east-1',
         configuration: { resources: [] },
         relationships: [],
+        simulatedResourceStates: {},
         workloadAssumptions: { ...defaultWorkload },
         updatedAt: new Date().toISOString(),
     };
@@ -336,6 +363,7 @@ type SandboxConsoleProps = {
     selectedResource: LabResource | null;
     selectedResourceId: string;
     selectedService: string;
+    onSetResourceState: (resourceId: string, state: SimulatedResourceState) => void;
     displayedTemplate: string;
     diagnostics: TemplateDiagnostic[];
     error: string;
@@ -464,10 +492,49 @@ function SandboxTabs({
     );
 }
 
+function LifecycleControl({
+    resource,
+    states,
+    onChange,
+}: {
+    resource: LabResource;
+    states: SimulatedResourceStates;
+    onChange: (resourceId: string, state: SimulatedResourceState) => void;
+}) {
+    const options = lifecycleOptions(resource);
+    if (!options) return <p className="sandbox-lifecycle-note">Status: configured in this simulation.</p>;
+    const current = resourceState(resource, states) ?? initialState(resource);
+    const action = current === options[0] ? options[1] : options[0];
+    const labels: Record<SimulatedResourceState, string> = {
+        running: 'Start',
+        stopped: 'Stop',
+        enabled: 'Enable',
+        disabled: 'Disable',
+        logging: 'Start logging',
+        'logging-stopped': 'Stop logging',
+    };
+    return (
+        <div className="sandbox-lifecycle">
+            <div>
+                <span className="eyebrow">SIMULATED LIFECYCLE</span>
+                <strong>{current}</strong>
+            </div>
+            <button
+                className="button button--outline button--small"
+                type="button"
+                onClick={() => onChange(resource.id, action)}
+            >
+                {labels[action]}
+            </button>
+            <small>This changes the model only. No AWS operation is performed.</small>
+        </div>
+    );
+}
+
 function SandboxWorkspace(props: SandboxConsoleProps) {
     const showConsole = props.view !== 'template';
     return (
-        <div className="sandbox-console__body">
+        <div className={`sandbox-console__body ${showConsole ? '' : 'is-template'}`}>
             {showConsole ? (
                 <CatalogNavigation
                     selectedService={props.view === 'architecture' ? 'overview' : props.selectedService}
@@ -476,6 +543,23 @@ function SandboxWorkspace(props: SandboxConsoleProps) {
             ) : null}
             <div className={`sandbox-console__content ${props.view === 'template' ? 'is-template' : ''}`}>
                 <SandboxWorkspacePage {...props} />
+                {showConsole && props.selectedResource ? (
+                    <div className="sandbox-resource-editor">
+                        <ResourceInspector
+                            resource={props.selectedResource}
+                            resources={props.resources}
+                            relationships={props.relationships}
+                            onChange={props.onChangeResource}
+                            onRemove={props.onRemoveResource}
+                            onConnect={props.onConnect}
+                        />
+                        <LifecycleControl
+                            resource={props.selectedResource}
+                            states={props.active.simulatedResourceStates}
+                            onChange={props.onSetResourceState}
+                        />
+                    </div>
+                ) : null}
                 {props.view !== 'template' ? (
                     <WorkloadEditor
                         value={props.active.workloadAssumptions}
@@ -485,14 +569,32 @@ function SandboxWorkspace(props: SandboxConsoleProps) {
                 ) : null}
             </div>
             {showConsole ? (
-                <ResourceInspector
-                    resource={props.selectedResource}
-                    resources={props.resources}
-                    relationships={props.relationships}
-                    onChange={props.onChangeResource}
-                    onRemove={props.onRemoveResource}
-                    onConnect={props.onConnect}
-                />
+                <aside className="sandbox-insights" aria-label="Architecture insights">
+                    <div className="sandbox-insights__summary">
+                        <span className="eyebrow">LIVE DESIGN</span>
+                        <h2>Insights</h2>
+                        <div className="sandbox-insights__counts">
+                            <span>
+                                <strong>{props.resources.length}</strong> Resources
+                            </span>
+                            <span>
+                                <strong>{props.relationships.length}</strong> Connections
+                            </span>
+                            <span>
+                                <strong>
+                                    {activeStateCount(props.resources, props.active.simulatedResourceStates)}
+                                </strong>{' '}
+                                Active
+                            </span>
+                        </div>
+                    </div>
+                    <AnalysisPanel
+                        analysis={props.analysis}
+                        analyzing={props.analyzing}
+                        onAnalyze={props.onAnalyze}
+                        onRefreshPrices={props.onRefreshPrices}
+                    />
+                </aside>
             ) : null}
         </div>
     );
@@ -506,6 +608,7 @@ function SandboxWorkspacePage(props: SandboxConsoleProps) {
                 region={props.active.region}
                 resources={props.resources}
                 selectedId={props.selectedResourceId}
+                simulatedResourceStates={props.active.simulatedResourceStates}
                 onSelect={props.onSelectResource}
                 onAdd={props.onAddResource}
             />
@@ -515,6 +618,8 @@ function SandboxWorkspacePage(props: SandboxConsoleProps) {
             <ArchitectureOverview
                 resources={props.resources}
                 relationships={props.relationships}
+                selectedId={props.selectedResourceId}
+                simulatedResourceStates={props.active.simulatedResourceStates}
                 onSelect={props.onSelectArchitectureResource}
             />
         );
@@ -559,12 +664,6 @@ function SandboxConsole(props: SandboxConsoleProps) {
                     {props.error}
                 </p>
             ) : null}
-            <AnalysisPanel
-                analysis={props.analysis}
-                analyzing={props.analyzing}
-                onAnalyze={props.onAnalyze}
-                onRefreshPrices={props.onRefreshPrices}
-            />
             <div className="sandbox-console__footnote">
                 <span>SIMULATED AWS CONSOLE</span>
                 <span>Independent educational sandbox · No AWS resources created</span>
@@ -740,6 +839,11 @@ export default function Sandbox({ user, onSignIn }: { user: User | null; onSignI
             const scenario = await getScenario(await user.getIdToken(), scenarioId);
             const snapshot = scenario.snapshot;
             const allRelationships = snapshot.relationships ?? [];
+            const inferred = new Set(
+                derivedRelationships(snapshot.configuration).map(
+                    (link) => `${link.sourceId}|${link.targetId}|${link.kind}`,
+                ),
+            );
             openDraft({
                 localId: createId(),
                 scenarioId: scenario.id,
@@ -748,8 +852,12 @@ export default function Sandbox({ user, onSignIn }: { user: User | null; onSignI
                 region: scenario.region,
                 configuration: snapshot.configuration,
                 relationships: allRelationships.filter(
-                    (relationship) => !derivedKinds.has(relationship.kind),
+                    (relationship) =>
+                        !inferred.has(
+                            `${relationship.sourceId}|${relationship.targetId}|${relationship.kind}`,
+                        ),
                 ),
+                simulatedResourceStates: snapshot.simulatedResourceStates ?? {},
                 workloadAssumptions: normalizedWorkload(scenario.workloadAssumptions),
                 updatedAt: new Date().toISOString(),
                 cloudFormationSource: snapshot.cloudFormationSource,
@@ -791,6 +899,10 @@ export default function Sandbox({ user, onSignIn }: { user: User | null; onSignI
 
     function addResource(): void {
         if (!active || templateEdited) return;
+        if (resources.length >= 80) {
+            setError('This architecture has reached the 80-resource limit.');
+            return;
+        }
         const resource = createResource(selectedService as SandboxService, active.configuration);
         updateDraft({ configuration: { resources: [...resources, resource] } });
         setSelectedResourceId(resource.id);
@@ -816,6 +928,9 @@ export default function Sandbox({ user, onSignIn }: { user: User | null; onSignI
         if (!active) return;
         updateDraft({
             configuration: { resources: resources.filter((resource) => resource.id !== resourceId) },
+            simulatedResourceStates: Object.fromEntries(
+                Object.entries(active.simulatedResourceStates).filter(([id]) => id !== resourceId),
+            ),
             relationships: active.relationships.filter(
                 (link) => link.sourceId !== resourceId && link.targetId !== resourceId,
             ),
@@ -845,6 +960,7 @@ export default function Sandbox({ user, onSignIn }: { user: User | null; onSignI
             const updated = {
                 ...active,
                 configuration: imported.configuration,
+                simulatedResourceStates: {},
                 relationships: imported.relationships,
                 cloudFormationSource: templateText,
                 updatedAt: new Date().toISOString(),
@@ -868,6 +984,13 @@ export default function Sandbox({ user, onSignIn }: { user: User | null; onSignI
         setTemplateText(generatedTemplate);
         setTemplateEdited(false);
         setError('');
+    }
+
+    function setResourceState(resourceId: string, state: SimulatedResourceState): void {
+        if (!active) return;
+        updateDraft({
+            simulatedResourceStates: { ...active.simulatedResourceStates, [resourceId]: state },
+        });
     }
 
     async function saveArchitecture(): Promise<void> {
@@ -961,6 +1084,7 @@ export default function Sandbox({ user, onSignIn }: { user: User | null; onSignI
             selectedResource={selectedResource}
             selectedResourceId={selectedResourceId}
             selectedService={selectedService}
+            onSetResourceState={setResourceState}
             displayedTemplate={displayedTemplate}
             diagnostics={diagnostics}
             error={error}
@@ -981,7 +1105,6 @@ export default function Sandbox({ user, onSignIn }: { user: User | null; onSignI
             onSelectArchitectureResource={(resource) => {
                 setSelectedService(resourceService(resource));
                 setSelectedResourceId(resource.id);
-                setView('services');
             }}
             onChangeResource={changeResource}
             onRemoveResource={removeResource}

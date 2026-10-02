@@ -48,6 +48,31 @@ beforeEach(() => {
 });
 
 describe('freeform architecture sandbox', () => {
+    it('shows a selectable diagram and keeps simulated lifecycle state in a guest draft', async () => {
+        const user = userEvent.setup();
+        const view = render(<Sandbox user={null} onSignIn={vi.fn()} />);
+        await user.click(screen.getByRole('button', { name: /new architecture/i }));
+        await user.click(screen.getByRole('button', { name: /amazon ec2/i }));
+        await user.click(screen.getByRole('button', { name: /create ec2/i }));
+        expect(screen.getByText('Running')).toBeInTheDocument();
+        await user.click(screen.getByRole('button', { name: 'Stop' }));
+        expect(screen.getByText('stopped')).toBeInTheDocument();
+        await user.click(screen.getByRole('tab', { name: 'Architecture' }));
+        expect(screen.getByRole('button', { name: 'Fit view' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /ec2 1.*stopped/i })).toHaveAttribute(
+            'aria-pressed',
+            'true',
+        );
+        await user.click(screen.getByRole('button', { name: /stack playground/i }));
+        await waitFor(() =>
+            expect(window.localStorage.getItem('stack-playground.sandbox.drafts.v1')).toContain('"stopped"'),
+        );
+        view.unmount();
+        render(<Sandbox user={null} onSignIn={vi.fn()} />);
+        await user.click(screen.getByRole('button', { name: /open architecture/i }));
+        expect(screen.getByText('stopped')).toBeInTheDocument();
+    });
+
     it('creates a guest draft, analyzes it, and reopens it from browser storage', async () => {
         const user = userEvent.setup();
         render(<Sandbox user={null} onSignIn={vi.fn()} />);
@@ -69,6 +94,10 @@ describe('freeform architecture sandbox', () => {
         await user.selectOptions(screen.getByRole('combobox', { name: /relationship type/i }), 'uses-origin');
         await user.click(screen.getByRole('button', { name: /add relationship/i }));
         expect(screen.getAllByText('uses-origin').length).toBeGreaterThan(0);
+        await user.click(screen.getByRole('tab', { name: 'Architecture' }));
+        expect(screen.getByLabelText('Resource connections')).toHaveTextContent('uses origin');
+        await user.click(screen.getByRole('button', { name: /s3 1.*configured/i }));
+        expect(screen.getByRole('textbox', { name: 'Resource name' })).toHaveValue('S3 1');
         await user.click(screen.getByRole('button', { name: /analyze architecture/i }));
 
         expect(await screen.findByText('Single instance is a failure point')).toBeInTheDocument();
