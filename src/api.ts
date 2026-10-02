@@ -87,6 +87,7 @@ export type ScenarioInput = {
     region: string;
     workloadAssumptions: WorkloadAssumptions;
     configuration: LabConfiguration;
+    simulatedResourceStates?: import('./features/sandbox/lifecycle').SimulatedResourceStates;
     relationships: Array<{ sourceId: string; targetId: string; kind: string }>;
     cloudFormationSource?: string;
 };

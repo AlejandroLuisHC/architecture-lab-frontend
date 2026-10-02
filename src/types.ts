@@ -150,6 +150,7 @@ export type Scenario = ScenarioSummary & {
         configuration: LabConfiguration;
         relationships: Array<{ sourceId: string; targetId: string; kind: string }>;
         cloudFormationSource?: string;
+        simulatedResourceStates?: import('./features/sandbox/lifecycle').SimulatedResourceStates;
     };
 };
 export type AnalysisFinding = {
