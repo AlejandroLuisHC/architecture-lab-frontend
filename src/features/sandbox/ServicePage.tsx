@@ -1,17 +1,27 @@
 import { useMemo, useState } from 'react';
 import type { LabResource } from '../../types';
 import { serviceCatalog, serviceEntry, serviceForResource, type SandboxService } from './catalog';
+import { stateLabel, type SimulatedResourceStates } from './lifecycle';
 
 type Props = {
     service: SandboxService;
     region: string;
     resources: LabResource[];
     selectedId: string;
+    simulatedResourceStates: SimulatedResourceStates;
     onSelect: (resourceId: string) => void;
     onAdd: () => void;
 };
 
-export default function ServicePage({ service, region, resources, selectedId, onSelect, onAdd }: Props) {
+export default function ServicePage({
+    service,
+    region,
+    resources,
+    selectedId,
+    simulatedResourceStates,
+    onSelect,
+    onAdd,
+}: Props) {
     const [query, setQuery] = useState('');
     const entry = serviceEntry(service);
     const filtered = useMemo(
@@ -109,7 +119,7 @@ export default function ServicePage({ service, region, resources, selectedId, on
                                     </td>
                                     <td>
                                         <span className="resource-status">
-                                            <i /> Sandbox configuration
+                                            <i /> {stateLabel(resource, simulatedResourceStates)}
                                         </span>
                                     </td>
                                 </tr>
